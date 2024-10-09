@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Cost of Delay Spiel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        #task-pool, #selected-tasks {
+            width: 45%;
+        }
+        .task {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        #start-game {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Cost of Delay Spiel</h1>
+<p>Priorisiere die Aufgaben, um den maximalen Gewinn zu erzielen!</p>
+
+<button id="start-game">Spiel Starten</button>
+
+<div id="game-container" style="display: none;">
+    <div id="task-pool">
+        <h2>Verfügbare Aufgaben</h2>
+        <div id="tasks"></div>
+    </div>
+    <div id="selected-tasks">
+        <h2>Gewählte Priorisierung</h2>
+        <div id="selected"></div>
+    </div>
+</div>
+
+<button id="calculate" style="display: none;">Ergebnis Berechnen</button>
+
+<div id="result"></div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
+

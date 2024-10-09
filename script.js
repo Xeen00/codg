@@ -158,19 +158,42 @@ calculateButton.addEventListener('click', () => {
     let cumulativeTimes = [];
     let delayCosts = [];
 
-    selectedTasks.forEach(task => {
+    let timeLabels = [];
+    let cumulativeProfit = [];
+    let cumulativeCost = [];
+    let tasksCompletionTimes = [];
+    let tasksStartTimes = [];
+    let profitAtTime = [];
+    let costAtTime = [];
+
+    selectedTasks.forEach((task, index) => {
+        let startTime = currentTime;
         currentTime += task.duration;
+        let endTime = currentTime;
+
         totalValue += task.value;
+
+        let taskDelayCost = 0;
         if (task.delayCost > 0) {
-            const delay = currentTime - task.duration;
-            const taskDelayCost = delay * task.delayCost;
+            const delay = startTime; // Verzögerung ist die Startzeit des Tasks
+            taskDelayCost = delay * task.delayCost;
             totalDelayCost += taskDelayCost;
             delayCosts.push(taskDelayCost);
+
+            // Kosten pro Stunde hinzufügen
+            for (let t = startTime; t < endTime; t++) {
+                costAtTime.push({ time: t + 1, value: task.delayCost });
+            }
         } else {
             delayCosts.push(0);
         }
+
         productNames.push(task.name);
-        cumulativeTimes.push(currentTime);
+        cumulativeTimes.push(endTime);
+        tasksStartTimes.push(startTime);
+        tasksCompletionTimes.push(endTime);
+
+        profitAtTime.push({ time: endTime, value: task.value });
     });
 
     const netProfit = totalValue - totalDelayCost;
@@ -181,6 +204,105 @@ calculateButton.addEventListener('click', () => {
         <p>Verzögerungskosten: ${totalDelayCost}€</p>
         <p><strong>Nettogewinn: ${netProfit}€</strong></p>
     `;
+
+    for (let t = 1; t <= currentTime; t++) {
+        timeLabels.push(t);
+    }
+
+    let accumulatedProfit = 0;
+    let accumulatedCost = 0;
+    for (let t = 1; t <= currentTime; t++) {
+        let profitEvents = profitAtTime.filter(event => event.time === t);
+        profitEvents.forEach(event => {
+            accumulatedProfit += event.value;
+        });
+        cumulativeProfit.push(accumulatedProfit);
+
+        let costEvents = costAtTime.filter(event => event.time === t);
+        costEvents.forEach(event => {
+            accumulatedCost += event.value;
+        });
+        cumulativeCost.push(accumulatedCost);
+    }
+
+    const ctx = document.getElementById('resultChart').getContext('2d');
+    window.resultChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeLabels,
+            datasets: [
+                {
+                    label: 'Kumulativer Gewinn',
+                    data: cumulativeProfit,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    fill: false,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Kumulative Kosten',
+                    data: cumulativeCost,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: false,
+                    yAxisID: 'y',
+                }
+            ]
+        },
+        options: {
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Arbeitsstunde'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Euro (€)'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: (context) => {
+                            return `Arbeitsstunde ${context[0].label}`;
+                        },
+                        afterBody: (context) => {
+                            let label = '';
+                            let t = parseInt(context[0].label);
+                            let tasksCompleted = [];
+                            profitAtTime.forEach((event, idx) => {
+                                if (event.time === t) {
+                                    tasksCompleted.push(selectedTasks[idx].name);
+                                }
+                            });
+                            if (tasksCompleted.length > 0) {
+                                label += 'Abgeschlossene Aufgaben: ' + tasksCompleted.join(', ') + '\n';
+                            }
+                            let costsIncurred = costAtTime.filter(event => event.time === t);
+                            if (costsIncurred.length > 0) {
+                                let totalCost = costsIncurred.reduce((sum, event) => sum + event.value, 0);
+                                label += `Verzögerungskosten in dieser Stunde: ${totalCost}€`;
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    checkGoals(netProfit, totalDelayCost, selectedTasks, currentTime);
+
+    const allGoalsAchieved = goals.every(goal => goal.achieved);
+    if (allGoalsAchieved) {
+        resultDiv.innerHTML += `<p style="color: green;"><strong>Glückwunsch! Sie haben alle Ziele erreicht!</strong></p>`;
+    } else {
+        resultDiv.innerHTML += `<p style="color: red;"><strong>Sie haben nicht alle Ziele erreicht. Versuchen Sie es erneut!</strong></p>`;
+    }
 
     let evaluationText = '<h3>Auswertung Ihrer Entscheidungen</h3>';
 
@@ -222,64 +344,10 @@ calculateButton.addEventListener('click', () => {
 
     evaluationText += `
         <h3>Bezug zur Softwareentwicklung</h3>
-        <p>In der Softwareentwicklung ist die Priorisierung von Aufgaben essenziell, um Projekte erfolgreich und effizient abzuschliessen. Hochkritische Aufgaben, wie das Implementieren von Kernfunktionen oder das Beheben schwerwiegender Fehler, sollten frühzeitig bearbeitet werden, um Verzögerungen und zusätzliche Kosten zu vermeiden.</p>
+        <p>In der Softwareentwicklung ist die Priorisierung von Aufgaben essenziell, um Projekte erfolgreich und effizient abzuschließen. Hochkritische Aufgaben, wie das Implementieren von Kernfunktionen oder das Beheben schwerwiegender Fehler, sollten frühzeitig bearbeitet werden, um Verzögerungen und zusätzliche Kosten zu vermeiden.</p>
         <p>Das Konzept des "Cost of Delay" hilft dabei, die finanziellen Auswirkungen von Verzögerungen zu quantifizieren und Entscheidungen über die Reihenfolge von Aufgaben zu treffen. Durch die Priorisierung von Aufgaben mit hohem Nutzen und hoher Dringlichkeit können Entwicklungsteams den Wert, den sie liefern, maximieren und gleichzeitig Risiken minimieren.</p>
         <p>Ihr Vorgehen in diesem Spiel spiegelt diese Prinzipien wider und zeigt, wie wichtig eine durchdachte Priorisierung in Projekten ist.</p>
     `;
 
     resultDiv.innerHTML += evaluationText;
-
-    const ctx = document.getElementById('resultChart').getContext('2d');
-    window.resultChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: productNames,
-            datasets: [
-                {
-                    label: 'Kumulative Produktionszeit',
-                    data: cumulativeTimes,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    yAxisID: 'y',
-                },
-                {
-                    label: 'Verzögerungskosten',
-                    data: delayCosts,
-                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                    yAxisID: 'y1',
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    type: 'linear',
-                    position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Zeit (Stunden)'
-                    },
-                },
-                y1: {
-                    type: 'linear',
-                    position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Kosten (€)'
-                    },
-                    grid: {
-                        drawOnChartArea: false,
-                    },
-                }
-            }
-        }
-    });
-
-    checkGoals(netProfit, totalDelayCost, selectedTasks, currentTime);
-
-    const allGoalsAchieved = goals.every(goal => goal.achieved);
-    if (allGoalsAchieved) {
-        resultDiv.innerHTML += `<p style="color: green;"><strong>Glückwunsch! Sie haben alle Ziele erreicht!</strong></p>`;
-    } else {
-        resultDiv.innerHTML += `<p style="color: red;"><strong>Sie haben nicht alle Ziele erreicht. Versuchen Sie es erneut!</strong></p>`;
-    }
 });

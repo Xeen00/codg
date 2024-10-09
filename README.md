@@ -1,2 +1,2 @@
-# codg
-Cost of delay game
+# Cost of delay game
+[Play Game](https://xeen00.github.io/codg/)

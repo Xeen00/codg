@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Cost of Delay Spiel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,18 +21,101 @@
             margin: 5px 0;
             cursor: pointer;
         }
+        .disabled {
+            background-color: #f9f9f9;
+            cursor: not-allowed;
+        }
         #result {
             margin-top: 20px;
         }
         #start-game {
             margin-bottom: 20px;
         }
+        #capacity-info {
+            margin-bottom: 10px;
+        }
+        #resultChart {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
 <h1>Cost of Delay Spiel</h1>
-<p>Priorisiere die Aufgaben, um den maximalen Gewinn zu erzielen!</p>
+
+<!-- Erklärung und Anleitung -->
+<div id="explanation">
+    <h2>Willkommen zum Cost of Delay Spiel</h2>
+    <p>
+        In diesem Spiel schlüpfst du in die Rolle eines Produktionsmanagers einer Schokoladenfabrik. Deine Aufgabe ist es, verschiedene Schokoladenprodukte zu produzieren, um den maximalen Nettogewinn zu erzielen.
+    </p>
+    <h3>Wie funktioniert das Spiel?</h3>
+    <ol>
+        <li>
+            <strong>Ziele des Spiels:</strong>
+            <ul>
+                <li>Erreiche einen Nettogewinn von mindestens 45.000 €.</li>
+                <li>Verzögerungskosten dürfen nicht höher als 7.000 € sein.</li>
+                <li>Produziere mindestens ein Produkt mit hoher Kritikalität.</li>
+                <li>Die Gesamtdauer darf 15 Stunden nicht überschreiten.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Spielablauf:</strong>
+            <ul>
+                <li>Dir steht eine Liste von Schokoladenprodukten zur Verfügung, jedes mit unterschiedlichen Eigenschaften:</li>
+                <ul>
+                    <li><em>Wert:</em> Der Erlös in Euro, den das Produkt bringt.</li>
+                    <li><em>Dauer:</em> Die Zeit in Stunden, die zur Produktion benötigt wird.</li>
+                    <li><em>Kritikalität:</em> Gibt an, wie dringend das Produkt ist (niedrig, mittel, hoch).</li>
+                    <li><em>Verzögerungskosten:</em> Kosten pro Stunde, die entstehen, wenn die Produktion verzögert wird.</li>
+                </ul>
+                <li>Wähle Produkte aus, die du produzieren möchtest, indem du auf sie klickst. Sie erscheinen dann in deiner Produktionsliste.</li>
+                <li>Beachte das Kapazitätslimit von 15 Stunden. Du kannst nur Produkte auswählen, deren Gesamtproduktionszeit dieses Limit nicht überschreitet.</li>
+                <li>Die Reihenfolge, in der du die Produkte auswählst, bestimmt die Produktionsreihenfolge.</li>
+                <li>Du kannst ausgewählte Produkte wieder abwählen, indem du in der Produktionsliste auf sie klickst.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Berechnung des Ergebnisses:</strong>
+            <ul>
+                <li>Klicke auf "Ergebnis Berechnen", wenn du deine Auswahl abgeschlossen hast.</li>
+                <li>Der Nettogewinn wird wie folgt berechnet:
+                    <ul>
+                        <li><em>Gesamtwert:</em> Summe der Erlöse aller produzierten Produkte.</li>
+                        <li><em>Verzögerungskosten:</em> Summe der Kosten, die durch Verzögerungen bei Produkten mit mittlerer oder hoher Kritikalität entstehen.</li>
+                        <li><em>Nettogewinn:</em> Gesamtwert minus Verzögerungskosten.</li>
+                    </ul>
+                </li>
+                <li>Ein Diagramm zeigt dir die kumulative Produktionszeit und die Verzögerungskosten für jedes Produkt.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Zielerreichung:</strong>
+            <ul>
+                <li>Nach der Berechnung erfährst du, ob du alle Ziele erreicht hast.</li>
+                <li>Falls nicht, kannst du deine Auswahl anpassen und es erneut versuchen.</li>
+            </ul>
+        </li>
+    </ol>
+    <h3>Was ist "Cost of Delay"?</h3>
+    <p>
+        "Cost of Delay" bezeichnet die Kosten, die durch die Verzögerung von Projekten oder Aufgaben entstehen. Im Kontext dieses Spiels bedeutet es, dass das späte Fertigstellen von kritischen Produkten zu zusätzlichen Kosten führt, die deinen Nettogewinn reduzieren.
+    </p>
+    <p>
+        Durch effiziente Priorisierung und Planung kannst du diese Verzögerungskosten minimieren und den Gewinn maximieren.
+    </p>
+</div>
+
+<!-- Ziele Bereich (weiterhin sichtbar) -->
+<div id="goals">
+    <h2>Ziele</h2>
+    <ul id="goal-list">
+        <!-- Die Ziele werden hier angezeigt -->
+    </ul>
+</div>
 
 <button id="start-game">Spiel Starten</button>
 
@@ -42,6 +126,7 @@
     </div>
     <div id="selected-tasks">
         <h2>Gewählte Priorisierung</h2>
+        <div id="capacity-info"></div>
         <div id="selected"></div>
     </div>
 </div>
@@ -49,6 +134,7 @@
 <button id="calculate" style="display: none;">Ergebnis Berechnen</button>
 
 <div id="result"></div>
+<canvas id="resultChart"></canvas>
 
 <script src="script.js"></script>
 

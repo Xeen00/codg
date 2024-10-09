@@ -20,10 +20,6 @@ const tasksData = [
 let tasks = [];
 let selectedTasks = [];
 
-// Kapazitätslimit (z. B. maximale Gesamtdauer in Minuten)
-const capacityLimit = 30; // Gesamtminuten, die für Produktion verfügbar sind
-let usedCapacity = 0;
-
 // Elemente aus dem DOM
 const startButton = document.getElementById('start-game');
 const gameContainer = document.getElementById('game-container');
@@ -31,7 +27,6 @@ const tasksDiv = document.getElementById('tasks');
 const selectedDiv = document.getElementById('selected');
 const calculateButton = document.getElementById('calculate');
 const resultDiv = document.getElementById('result');
-const capacityInfo = document.getElementById('capacity-info');
 
 // Spiel starten
 startButton.addEventListener('click', () => {
@@ -39,11 +34,7 @@ startButton.addEventListener('click', () => {
     gameContainer.style.display = 'flex';
     calculateButton.style.display = 'inline';
     tasks = [...tasksData];
-    usedCapacity = 0;
-    selectedTasks = [];
-    updateCapacityInfo();
     renderTasks();
-    renderSelectedTasks();
 });
 
 // Aufgaben anzeigen
@@ -58,35 +49,23 @@ function renderTasks() {
             Dauer: ${task.duration} Min.<br>
             Kritikalität: ${task.criticality}
         `;
-        // Wenn Kapazität überschritten würde, Aufgabe deaktivieren
-        if (usedCapacity + task.duration > capacityLimit) {
-            taskEl.classList.add('disabled');
-        } else {
-            taskEl.addEventListener('click', () => selectTask(index));
-        }
+        taskEl.addEventListener('click', () => selectTask(index));
         tasksDiv.appendChild(taskEl);
     });
 }
 
 // Aufgabe auswählen
 function selectTask(index) {
-    const task = tasks[index];
-    if (usedCapacity + task.duration <= capacityLimit) {
-        selectedTasks.push(task);
-        tasks.splice(index, 1);
-        usedCapacity += task.duration;
-        updateCapacityInfo();
-        renderTasks();
-        renderSelectedTasks();
-    } else {
-        alert('Kapazitätslimit erreicht! Sie können diese Aufgabe nicht hinzufügen.');
-    }
+    selectedTasks.push(tasks[index]);
+    tasks.splice(index, 1);
+    renderTasks();
+    renderSelectedTasks();
 }
 
 // Gewählte Aufgaben anzeigen
 function renderSelectedTasks() {
     selectedDiv.innerHTML = '';
-    selectedTasks.forEach((task, index) => {
+    selectedTasks.forEach(task => {
         const taskEl = document.createElement('div');
         taskEl.className = 'task';
         taskEl.innerHTML = `
@@ -95,14 +74,31 @@ function renderSelectedTasks() {
             Dauer: ${task.duration} Min.<br>
             Kritikalität: ${task.criticality}
         `;
-        taskEl.addEventListener('click', () => deselectTask(index));
         selectedDiv.appendChild(taskEl);
     });
 }
 
-// Aufgabe abwählen
-function deselectTask(index) {
-    const task = selectedTasks[index];
-    selectedTasks.splice(index, 1);
-    tasks.push(task);
-    usedC
+// Ergebnis berechnen
+calculateButton.addEventListener('click', () => {
+    let totalValue = 0;
+    let totalDelayCost = 0;
+    let currentTime = 0;
+
+    selectedTasks.forEach(task => {
+        currentTime += task.duration;
+        totalValue += task.value;
+        if (task.delayCost > 0) {
+            const delay = currentTime - task.duration;
+            totalDelayCost += delay * task.delayCost;
+        }
+    });
+
+    const netProfit = totalValue - totalDelayCost;
+
+    resultDiv.innerHTML = `
+        <h2>Ergebnis</h2>
+        <p>Gesamtwert der produzierten Produkte: ${totalValue}€</p>
+        <p>Verzögerungskosten: ${totalDelayCost}€</p>
+        <p><strong>Nettogewinn: ${netProfit}€</strong></p>
+    `;
+});

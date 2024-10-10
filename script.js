@@ -173,21 +173,6 @@ calculateButton.addEventListener('click', () => {
 
         totalValue += task.value;
 
-        let taskDelayCost = 0;
-        if (task.delayCost > 0) {
-            const delay = startTime; // Verzögerung ist die Startzeit des Tasks
-            taskDelayCost = delay * task.delayCost;
-            totalDelayCost += taskDelayCost;
-            delayCosts.push(taskDelayCost);
-
-            // Kosten pro Stunde hinzufügen
-            for (let t = startTime; t < endTime; t++) {
-                costAtTime.push({ time: t + 1, value: task.delayCost });
-            }
-        } else {
-            delayCosts.push(0);
-        }
-
         productNames.push(task.name);
         cumulativeTimes.push(endTime);
         tasksStartTimes.push(startTime);
@@ -196,6 +181,33 @@ calculateButton.addEventListener('click', () => {
         profitAtTime.push({ time: endTime, value: task.value });
     });
 
+    for (let t = 1; t <= currentTime; t++) {
+        timeLabels.push(t);
+    }
+
+    let accumulatedProfit = 0;
+    let accumulatedCost = 0;
+
+    for (let t = 1; t <= currentTime; t++) {
+        let profitEvents = profitAtTime.filter(event => event.time === t);
+        profitEvents.forEach(event => {
+            accumulatedProfit += event.value;
+        });
+        cumulativeProfit.push(accumulatedProfit);
+
+        let delayCostThisHour = 0;
+        selectedTasks.forEach((task, index) => {
+            if (task.delayCost > 0 && t < tasksStartTimes[index] + 1) {
+                delayCostThisHour += task.delayCost;
+            }
+        });
+        accumulatedCost += delayCostThisHour;
+        cumulativeCost.push(accumulatedCost);
+
+        costAtTime.push({ time: t, value: delayCostThisHour });
+    }
+
+    totalDelayCost = accumulatedCost;
     const netProfit = totalValue - totalDelayCost;
 
     resultDiv.innerHTML = `
@@ -204,26 +216,6 @@ calculateButton.addEventListener('click', () => {
         <p>Verzögerungskosten: ${totalDelayCost}€</p>
         <p><strong>Nettogewinn: ${netProfit}€</strong></p>
     `;
-
-    for (let t = 1; t <= currentTime; t++) {
-        timeLabels.push(t);
-    }
-
-    let accumulatedProfit = 0;
-    let accumulatedCost = 0;
-    for (let t = 1; t <= currentTime; t++) {
-        let profitEvents = profitAtTime.filter(event => event.time === t);
-        profitEvents.forEach(event => {
-            accumulatedProfit += event.value;
-        });
-        cumulativeProfit.push(accumulatedProfit);
-
-        let costEvents = costAtTime.filter(event => event.time === t);
-        costEvents.forEach(event => {
-            accumulatedCost += event.value;
-        });
-        cumulativeCost.push(accumulatedCost);
-    }
 
     const ctx = document.getElementById('resultChart').getContext('2d');
     window.resultChart = new Chart(ctx, {
@@ -237,15 +229,13 @@ calculateButton.addEventListener('click', () => {
                     borderColor: 'rgba(54, 162, 235, 1)',
                     backgroundColor: 'rgba(54, 162, 235, 0.2)',
                     fill: false,
-                    yAxisID: 'y',
                 },
                 {
-                    label: 'Kumulative Kosten',
+                    label: 'Kumulative Verzögerungskosten',
                     data: cumulativeCost,
                     borderColor: 'rgba(255, 99, 132, 1)',
                     backgroundColor: 'rgba(255, 99, 132, 0.2)',
                     fill: false,
-                    yAxisID: 'y',
                 }
             ]
         },
@@ -273,6 +263,7 @@ calculateButton.addEventListener('click', () => {
                         afterBody: (context) => {
                             let label = '';
                             let t = parseInt(context[0].label);
+                            // Anzeigen, welche Aufgaben abgeschlossen wurden
                             let tasksCompleted = [];
                             profitAtTime.forEach((event, idx) => {
                                 if (event.time === t) {
@@ -282,10 +273,10 @@ calculateButton.addEventListener('click', () => {
                             if (tasksCompleted.length > 0) {
                                 label += 'Abgeschlossene Aufgaben: ' + tasksCompleted.join(', ') + '\n';
                             }
-                            let costsIncurred = costAtTime.filter(event => event.time === t);
-                            if (costsIncurred.length > 0) {
-                                let totalCost = costsIncurred.reduce((sum, event) => sum + event.value, 0);
-                                label += `Verzögerungskosten in dieser Stunde: ${totalCost}€`;
+                            // Anzeigen der Verzögerungskosten in dieser Stunde
+                            let costEvent = costAtTime.find(event => event.time === t);
+                            if (costEvent && costEvent.value > 0) {
+                                label += `Verzögerungskosten in dieser Stunde: ${costEvent.value}€`;
                             }
                             return label;
                         }
@@ -315,6 +306,7 @@ calculateButton.addEventListener('click', () => {
     evaluationText += '<p><strong>Analyse der Priorisierung:</strong></p>';
     evaluationText += '<ul>';
 
+    // Prüfen, ob hochkritische Produkte priorisiert wurden
     const highCriticalityTasks = selectedTasks.filter(task => task.criticality === 'hoch');
     if (highCriticalityTasks.length > 0) {
         const firstHighCriticalTask = selectedTasks.findIndex(task => task.criticality === 'hoch') + 1;
@@ -329,7 +321,7 @@ calculateButton.addEventListener('click', () => {
     }
 
     if (totalDelayCost > 0) {
-        evaluationText += `<li>Die Verzögerungskosten betragen insgesamt ${totalDelayCost}€. Durch frühere Priorisierung von Produkten mit hoher oder mittlerer Kritikalität könnten diese Kosten reduziert werden.</li>`;
+        evaluationText += `<li>Die Verzögerungskosten betragen insgesamt ${totalDelayCost}€. Durch frühere Priorisierung von kritischen Aufgaben könnten diese Kosten reduziert werden.</li>`;
     } else {
         evaluationText += '<li>Sie haben keine Verzögerungskosten verursacht. Sehr gut!</li>';
     }
@@ -344,9 +336,8 @@ calculateButton.addEventListener('click', () => {
 
     evaluationText += `
         <h3>Bezug zur Softwareentwicklung</h3>
-        <p>In der Softwareentwicklung ist die Priorisierung von Aufgaben essenziell, um Projekte erfolgreich und effizient abzuschließen. Hochkritische Aufgaben, wie das Implementieren von Kernfunktionen oder das Beheben schwerwiegender Fehler, sollten frühzeitig bearbeitet werden, um Verzögerungen und zusätzliche Kosten zu vermeiden.</p>
-        <p>Das Konzept des "Cost of Delay" hilft dabei, die finanziellen Auswirkungen von Verzögerungen zu quantifizieren und Entscheidungen über die Reihenfolge von Aufgaben zu treffen. Durch die Priorisierung von Aufgaben mit hohem Nutzen und hoher Dringlichkeit können Entwicklungsteams den Wert, den sie liefern, maximieren und gleichzeitig Risiken minimieren.</p>
-        <p>Ihr Vorgehen in diesem Spiel spiegelt diese Prinzipien wider und zeigt, wie wichtig eine durchdachte Priorisierung in Projekten ist.</p>
+        <p>In der Softwareentwicklung entstehen Verzögerungskosten nicht nur durch einzelne Aufgaben, sondern durch die Gesamtheit aller noch offenen, kritischen Aufgaben. Wenn kritische Funktionen oder Fehlerbehebungen verzögert werden, erhöhen sich die Kosten mit jeder Zeiteinheit, in der sie nicht abgeschlossen sind.</p>
+        <p>Dieses Spiel zeigt, wie wichtig es ist, alle offenen kritischen Aufgaben zu berücksichtigen und ihre kumulativen Auswirkungen auf das Projekt zu verstehen. Durch die Priorisierung der wichtigsten Aufgaben und das frühzeitige Abschließen können die Gesamtkosten deutlich reduziert werden.</p>
     `;
 
     resultDiv.innerHTML += evaluationText;
